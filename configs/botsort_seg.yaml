@@ -1,0 +1,25 @@
+# Ultralytics 🚀 AGPL-3.0 许可证 - https://ultralytics.com/license
+
+# BoT-SORT 追踪器配置（用于 mode="track"）- 防止ID交换优化版
+# 文档: https://docs.ultralytics.com/modes/track/
+
+tracker_type: botsort # 追踪器类型: botsort|bytetrack（选择botsort启用BoT-SORT功能）
+
+# === 核心追踪参数（防止ID交换的关键配置）===
+track_high_thresh: 0.4 # ⬆️ 提高到0.4：更严格，只匹配高质量检测，减少误匹配
+track_low_thresh: 0.8 # ⬆️ 提高到0.2：提高第二阶段阈值，减少低质量匹配导致的ID交换
+new_track_thresh: 0.3 # ⬆️ 提高到0.7：更严格的新轨迹创建，避免误创建新ID
+track_buffer: 10 # ⬆️⬆️ 提高到50帧：更长的缓冲，减少短暂遮挡时创建新ID
+match_thresh: 0.95
+
+# === 检测融合参数 ===
+fuse_score: True # 启用：融合检测分数与运动预测，增强稳定性
+
+# === BoT-SORT 特定参数 ===
+gmc_method: sparseOptFlow # 全局运动补偿：处理相机抖动，提高预测准确性
+
+# === ReID 参数（强化外观匹配，防止ID交换）===
+proximity_thresh: 0.3 # ⬆️ 提高到0.3：更严格的ReID触发条件，只对接近的目标做ReID
+appearance_thresh: 0.5 # ⬆️⬆️ 提高到0.5：更严格的外观相似度，防止误匹配导致ID交换
+with_reid: False # 启用ReID：关键！帮助在长时间遮挡后正确重新识别
+model: auto # 使用自动ReID模型
