@@ -1,0 +1,6 @@
+device_type: cuda
+device_id: 0
+num_threads: 4
+batch_size: 1
+fp16: true
+

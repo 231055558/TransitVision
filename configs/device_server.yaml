@@ -1,0 +1,6 @@
+device_type: npu
+device_id: 0
+num_threads: 128
+batch_size: 1
+fp16: true
+
