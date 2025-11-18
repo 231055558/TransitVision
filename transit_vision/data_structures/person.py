@@ -5,6 +5,7 @@ class Person:
         self.boxes = []
         self.masks = []
         self.confs = []
+        self.trigger_frame = None
     
     def add_detection(self, frame_idx, box, mask=None, conf=None):
         self.frames.append(frame_idx)
