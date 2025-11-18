@@ -7,3 +7,5 @@ tests/complete_scheme/__pycache__/down_location_det.cpython-310.pyc
 tests/complete_scheme/__pycache__/down_passenger_det.cpython-310.pyc
 tests/complete_scheme/__pycache__/up_door_angle.cpython-310.pyc
 tests/complete_scheme/__pycache__/up_passenger_det.cpython-310.pyc
+ckpt/front_door.pt
+ckpt/yolo11x-seg.pt
