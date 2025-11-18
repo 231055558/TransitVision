@@ -45,3 +45,16 @@ class VideoReader:
     def __exit__(self, *args):
         self.release()
 
+def read_first_frame(video_path):
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise IOError(f"failed to open: {video_path}")
+    
+    ret, frame = cap.read()
+    cap.release()
+    
+    if not ret:
+        raise IOError(f"failed to read frame: {video_path}")
+    
+    return frame
+
