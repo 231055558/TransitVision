@@ -79,8 +79,12 @@ def test_boarding_logic():
     for tid, person in sorted(boarding.items()):
         print(f"  ID {tid}: {len(person)} frames")
     
-    # 4. 可视化
+    # 4. 可视化(带帧定格)
     print("\n4. Visualization...")
+    
+    # 找出所有上车判定时刻(轨迹最后一帧)
+    trigger_frames = {person.frames[-1]: tid for tid, person in boarding.items()}
+    
     with VideoReader(VIDEO_PATH) as reader:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out_path = str(OUTPUT_DIR / "boarding_result.mp4")
@@ -119,6 +123,13 @@ def test_boarding_logic():
                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             
             out.write(rotated)
+            
+            # 判定时刻定格0.5s
+            if frame_idx in trigger_frames:
+                freeze_frames = int(reader.fps * 0.5)
+                for _ in range(freeze_frames):
+                    out.write(rotated)
+            
             frame_idx += 1
         
         out.release()

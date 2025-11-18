@@ -74,8 +74,13 @@ def test_alighting_logic():
     for tid, person in sorted(alighting.items()):
         print(f"  ID {tid}: {len(person)} frames, trigger={person.trigger_frame}")
     
-    # 4. 可视化
+    # 4. 可视化(带帧定格)
     print("\n4. Visualization...")
+    
+    # 找出所有下车判定时刻
+    trigger_frames = {person.trigger_frame: tid for tid, person in alighting.items() 
+                      if person.trigger_frame is not None}
+    
     with VideoReader(VIDEO_PATH) as reader:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out_path = str(OUTPUT_DIR / "alighting_result.mp4")
@@ -109,6 +114,13 @@ def test_alighting_logic():
                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             
             out.write(frame)
+            
+            # 判定时刻定格0.5s
+            if frame_idx in trigger_frames:
+                freeze_frames = int(reader.fps * 0.5)
+                for _ in range(freeze_frames):
+                    out.write(frame)
+            
             frame_idx += 1
         
         out.release()
