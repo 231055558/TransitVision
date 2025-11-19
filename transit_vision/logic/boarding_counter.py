@@ -57,8 +57,40 @@ def check_boarding_pattern(boxes, door_bbox):
     # 检查离开时在门框右侧
     door_center_x = (door_bbox[0] + door_bbox[2]) / 2
     exit_center_x = (boxes[exit_idx][0] + boxes[exit_idx][2]) / 2
+    # 离开时的中心在门框中心的右侧
+    if exit_center_x <= door_center_x:
+        return False
+    # 在原有逻辑全部通过后，增加最后一道防线：检查包围框高度。
+    # 这是为了过滤掉那些在车窗外经过、轨迹也符合“门口->右侧”模式的行人。
     
-    return exit_center_x > door_center_x
+    # 1. 计算门框的高度作为基准
+    door_height = door_bbox[3] - door_bbox[1]
+    if door_height == 0:
+        return False # 避免门框数据错误导致除零
+
+    # 2. 计算轨迹在离开门框后（即进入车内区域）的平均高度
+    # 我们从 exit_idx 开始，考察之后所有在右侧的帧，以获得更稳定的高度值
+    inside_boxes = []
+    for i in range(exit_idx, len(boxes)):
+        box = boxes[i]
+        box_center_x = (box[0] + box[2]) / 2
+        if box_center_x > door_center_x:
+            inside_boxes.append(box)
+    
+    # 如果没有找到在右侧的box（虽然理论上exit_box就是一个），则返回False
+    if not inside_boxes:
+        return False
+
+    # 计算平均高度
+    avg_inside_height = np.mean([(box[3] - box[1]) for box in inside_boxes])
+
+    # 3. 核心判断：平均高度是否超过了门框高度的阈值比例？
+    # 如果高度不足，说明目标很可能被车窗边框限制了，判定为车外行人。
+    height_ratio_threshold = 0.48
+    if avg_inside_height < door_height * height_ratio_threshold:
+        return False
+    
+    return True
 
 def is_reliable_track(frames, min_frames=7, max_gap=2):
     if len(frames) < min_frames:
