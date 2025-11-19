@@ -262,3 +262,22 @@ data/od_1021/notknow路/2-6764-3/2025-10-27-18-10_2-6764_焦家村_down.mp4
 data/od_1021/notknow路/2-6764-3/2025-10-27-18-10_2-6764_焦家村_up.mp4
 data/od_1021/notknow路/2-6764-3/2025-10-27-18-17_2-6764_绍兴路德胜路口①_down.mp4
 data/od_1021/notknow路/2-6764-3/2025-10-27-18-17_2-6764_绍兴路德胜路口①_up.mp4
+transit_vision/core/__pycache__/__init__.cpython-310.pyc
+transit_vision/core/detection/__pycache__/__init__.cpython-310.pyc
+transit_vision/core/detection/__pycache__/door_seg.cpython-310.pyc
+transit_vision/core/detection/__pycache__/person_seg.cpython-310.pyc
+transit_vision/data_structures/__pycache__/__init__.cpython-310.pyc
+transit_vision/data_structures/__pycache__/door.cpython-310.pyc
+transit_vision/data_structures/__pycache__/person.cpython-310.pyc
+transit_vision/logic/__pycache__/__init__.cpython-310.pyc
+transit_vision/logic/__pycache__/alighting_counter.cpython-310.pyc
+transit_vision/logic/__pycache__/boarding_counter.cpython-310.pyc
+transit_vision/utils/__pycache__/__init__.cpython-310.pyc
+transit_vision/utils/__pycache__/angle_calc.cpython-310.pyc
+transit_vision/utils/__pycache__/bbox_saver.cpython-310.pyc
+transit_vision/utils/__pycache__/device.cpython-310.pyc
+transit_vision/utils/__pycache__/driver_mask.cpython-310.pyc
+transit_vision/utils/__pycache__/frame_selector.cpython-310.pyc
+transit_vision/utils/__pycache__/image_ops.cpython-310.pyc
+transit_vision/utils/__pycache__/video_reader.cpython-310.pyc
+transit_vision/__pycache__/__init__.cpython-310.pyc

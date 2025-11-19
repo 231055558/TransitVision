@@ -1,8 +1,5 @@
 import cv2
 import numpy as np
-from typing import Dict
-from ..data_structures.person import Person
-from ..data_structures.door import Door
 
 def bbox_overlaps_mask(box, door_mask):
     x1, y1, x2, y2 = map(int, box)
@@ -76,36 +73,3 @@ def filter_alighting_passengers(tracks, door_mask):
             valid[track_id] = person
     
     return valid
-
-# 类式API包装器（统一接口）
-class AlightingCounterV1:
-    def __init__(self, config: dict = None):
-        self.threshold = 0.85
-        self.min_frames = 5
-        self.passenger_count = 0
-        if config:
-            alighting_config = config.get('alighting_counter', {})
-            self.threshold = alighting_config.get('door_entry_threshold', 0.85)
-    
-    def reset(self):
-        self.passenger_count = 0
-    
-    def update_counts(self, frame_idx: int, persons: Dict[int, Person], door: Door):
-        # 将Person对象转换为tracks格式
-        tracks = {pid: p for pid, p in persons.items() if not getattr(p, 'has_counted', False)}
-        
-        if door is None or door.mask is None:
-            return
-        
-        # 使用原逻辑过滤
-        valid = filter_alighting_passengers(tracks, door.mask)
-        
-        # 更新计数
-        for pid, person in valid.items():
-            if not getattr(person, 'has_counted', False):
-                self.passenger_count += 1
-                person.has_counted = True
-                print(f"[V1-Frame {frame_idx}] Person {person.id} counted as alighting.")
-    
-    def get_count(self) -> int:
-        return self.passenger_count
