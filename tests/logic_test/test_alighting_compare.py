@@ -10,7 +10,7 @@ import numpy as np
 
 # ===== 版本选择 =====
 # 切换版本: 修改这里的导入即可
-USE_VERSION = "v2"  # 可选: "v1" 或 "v2"
+USE_VERSION = "v1"  # 可选: "v1" 或 "v2"
 
 if USE_VERSION == "v1":
     from transit_vision.logic.alighting_counter_v1 import AlightingCounterV1 as AlightingCounter
@@ -21,7 +21,7 @@ elif USE_VERSION == "v2":
 else:
     raise ValueError(f"未知版本: {USE_VERSION}")
 
-VIDEO_PATH = "/mnt/mydisk/My_project/bus_down/reid_mark/od_1021/36路/8-6161/2025-10-20-07-01_8-6161_杨家门_down.mp4"
+VIDEO_PATH = "/mnt/mydisk/My_project/od_identification/bus_data/拥堵视频-1011/8-2-6712-001.mp4"
 PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
 DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
@@ -76,11 +76,7 @@ def test_alighting_compare():
                     all_persons[tid] = Person(tid)
                 
                 p = all_persons[tid]
-                p.frames.append(frame_idx)
-                p.boxes.append(det['box'])
-                p.masks.append(det['mask'])
-                p.confs.append(det['conf'])
-                p.last_seen_frame = frame_idx
+                p.add_detection(frame_idx, det['box'], det['mask'], det['conf'])
             
             # 更新计数器
             counter.update_counts(frame_idx, all_persons, door)
