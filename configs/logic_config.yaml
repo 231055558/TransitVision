@@ -1,0 +1,27 @@
+# 业务逻辑模块的统一配置文件
+
+models:
+  person_segmentation: "ckpt/yolo11x-seg.pt" # 乘客分割模型
+  head_detection: "ckpt/besthead2.pt"        # 人头检测模型
+  door_segmentation: "ckpt/bestdoor2.pt"     # 自动车门分割模型
+
+alighting_counter:
+  person_conf: 0.3                   # 乘客检测置信度阈值
+  grace_period_frames: 6             # 乘客消失后被计为下车的等待帧数
+  door_entry_threshold: 0.50         # 乘客Mask进入车门的重叠比例，用于判断下车意图
+  tracker_config_file: "botsort_seg.yaml" # 追踪器配置文件
+
+occupancy_analyzer:
+  max_people: 20                     # 车辆最大载客量
+  head_conf_threshold: 0.6           # 人头检测置信度阈值
+  stats_interval_sec: 1              # 拥挤度状态统计的时间间隔（秒）
+
+  # 拥挤度状态定义 (基于空座率)
+  idle_seat_rate: 0.7                # 空闲状态阈值 (空座率 > 70%)
+  comfortable_seat_rate_min: 0.3     # 舒适状态最小阈值 (空座率 30-70%)
+  crowded_seat_rate: 0.3             # 拥挤状态阈值 (空座率 <= 30%)
+
+  # 门口拥挤定义
+  door_distance_threshold: 400       # 人头到门锚点的距离阈值（像素）
+  near_door_crowded_threshold: 3     # 门前拥挤人数阈值
+  near_door_severe_threshold: 5    # 门前严重拥挤人数阈值
