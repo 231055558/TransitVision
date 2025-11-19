@@ -55,7 +55,7 @@ def check_alighting_action(status_list):
             return i
     return -1
 
-def filter_alighting_passengers(tracks, door_mask):
+def filter_alighting_passengers(tracks, door_mask, threshold=0.85):
     valid = {}
     
     for track_id, person in tracks.items():
@@ -64,7 +64,7 @@ def filter_alighting_passengers(tracks, door_mask):
         
         status = []
         for mask, box in zip(person.masks, person.boxes):
-            entered = check_door_entry(mask, box, door_mask)
+            entered = check_door_entry(mask, box, door_mask, threshold)
             status.append(1 if entered else 0)
         
         trigger_idx = check_alighting_action(status)

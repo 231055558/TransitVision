@@ -9,7 +9,8 @@ from transit_vision.logic.alighting_counter_v2 import filter_alighting_passenger
 import cv2
 import numpy as np
 
-VIDEO_PATH = "/mnt/mydisk/My_project/bus_down/reid_mark/od_1021/36路/8-6161/2025-10-20-07-01_8-6161_杨家门_down.mp4"
+DOOR_VIDEO = "/mnt/mydisk/My_project/bus_down/reid_mark/od_1021/36路/8-6161/2025-10-20-07-01_8-6161_杨家门_down.mp4"
+TEST_VIDEO = "/mnt/mydisk/My_project/od_identification/bus_data/拥堵视频-1011/8-2-8116-002.mp4"
 PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
 DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
@@ -22,33 +23,41 @@ def test_alighting_v2():
     print("=== V2 Test ===")
     
     device_cfg = DeviceConfig(DEVICE_CONFIG)
+    
+    # 1. 从门检测视频获取门掩码
+    print(f"\n1. Door detection from: {Path(DOOR_VIDEO).name}")
     door_seg = DoorSegmentor(DOOR_MODEL, device_cfg)
-    first_frame = read_first_frame(VIDEO_PATH)
-    door = door_seg.detect(first_frame)
+    door_frame = read_first_frame(DOOR_VIDEO)
+    door = door_seg.detect(door_frame)
     
     if door is None:
         print("✗ No door")
         return
     
     door_mask = preprocess_rear_door(door)
-    print(f"✓ Door: {np.sum(door_mask > 0)}")
+    print(f"✓ Door mask area: {np.sum(door_mask > 0)}")
     
+    # 2. 从测试视频进行人员追踪
+    print(f"\n2. Person tracking from: {Path(TEST_VIDEO).name}")
     person_tracker = PersonSegTracker(PERSON_MODEL, TRACKER_CONFIG, device_cfg)
-    all_tracks = person_tracker.track_video(VideoReader(VIDEO_PATH))
+    all_tracks = person_tracker.track_video(VideoReader(TEST_VIDEO))
     
-    print(f"✓ Tracks: {len(all_tracks)}")
+    print(f"✓ Total tracks: {len(all_tracks)}")
     
-    alighting = filter_alighting_passengers(all_tracks, door_mask, threshold=0.5)
-    print(f"✓ Alighting: {len(alighting)}")
+    # 3. 下客判定
+    print(f"\n3. Alighting detection...")
+    alighting = filter_alighting_passengers(all_tracks, door_mask, threshold=0.5, grace_period=6)
+    print(f"✓ Alighting passengers: {len(alighting)}")
     
     for tid, person in sorted(alighting.items()):
         print(f"  ID {tid}: {len(person)} frames")
     
-    # 可视化
+    # 4. 可视化
+    print(f"\n4. Generating visualization...")
     trigger_frames = {person.trigger_frame: tid for tid, person in alighting.items() 
                       if person.trigger_frame is not None}
     
-    with VideoReader(VIDEO_PATH) as reader:
+    with VideoReader(TEST_VIDEO) as reader:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out_path = str(OUTPUT_DIR / "alighting_v2.mp4")
         out = cv2.VideoWriter(out_path, fourcc, reader.fps, (reader.width, reader.height))
@@ -89,7 +98,8 @@ def test_alighting_v2():
         
         out.release()
     
-    print(f"Output: {out_path}")
+    print(f"\n✓ Output: {out_path}")
+    print(f"✓ Total alighting count: {len(alighting)}")
 
 if __name__ == "__main__":
     test_alighting_v2()

@@ -281,3 +281,11 @@ transit_vision/utils/__pycache__/frame_selector.cpython-310.pyc
 transit_vision/utils/__pycache__/image_ops.cpython-310.pyc
 transit_vision/utils/__pycache__/video_reader.cpython-310.pyc
 transit_vision/__pycache__/__init__.cpython-310.pyc
+transit_vision/logic/__pycache__/alighting_counter_v1.cpython-310.pyc
+tests/logic_test/output/alighting_v1.mp4
+tests/logic_test/output/alighting_v2.mp4
+transit_vision/logic/__pycache__/alighting_counter_v1.cpython-310.pyc
+tests/complete_scheme_lj/debus_seg.py
+tests/complete_scheme_lj/process_bus_route.py
+transit_vision/logic/__pycache__/alighting_counter_v1.cpython-310.pyc
+transit_vision/logic/__pycache__/alighting_counter_v2.cpython-310.pyc
