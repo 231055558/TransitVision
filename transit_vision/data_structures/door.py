@@ -23,3 +23,11 @@ class Door:
     def area(self):
         return np.sum(self.mask > 0) if self.mask is not None else 0
 
+    @property
+    def anchor(self):
+        if self.bbox is None:
+            return None
+        x1, y1, x2, y2 = self.bbox
+        anchor_x = int((x1 + x2) / 2)
+        anchor_y = int(y1 + (y2 - y1) * 0.75)
+        return (anchor_x, anchor_y)
