@@ -5,6 +5,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from transit_vision.utils import VideoReader, read_first_frame, DeviceConfig
 from transit_vision.core.detection import PersonSegTracker, DoorSegmentor
 from transit_vision.logic import preprocess_rear_door, filter_alighting_passengers
+from transit_vision.data_structures import Door
 import cv2
 import numpy as np
 
@@ -68,7 +69,7 @@ def test_alighting_logic():
     
     # 3. 下客判定
     print("\n3. Alighting filtering...")
-    alighting = filter_alighting_passengers(all_tracks, door_mask)
+    alighting = filter_alighting_passengers(all_tracks, door_mask, threshold=0.5, grace_period=6)
     
     print(f"✓ Alighting passengers: {len(alighting)}")
     for tid, person in sorted(alighting.items()):
