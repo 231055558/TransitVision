@@ -26,9 +26,12 @@ transit_vision/
 │   │   ├── person_seg.py     # 人员分割追踪(PersonSegTracker)
 │   │   └── door_seg.py       # 门检测分割(DoorSegmentor)
 │   │
-│   ├── reid/                 # 重识别模块
+│   ├── reid/                 # 重识别模块(基于Pose2ID)
 │   │   ├── __init__.py
-│   │   └── feature_similarity.py # 封装PASS或您选择的ReID模型
+│   │   ├── feature_extractor.py  # ReID特征提取器
+│   │   ├── nfc.py                # 邻域特征中心化
+│   │   ├── matcher.py            # 特征匹配算法
+│   │   └── pose2id_model/        # Pose2ID模型代码
 │   │
 │   └── prediction/           # 客流预估模块 (暂时留白)
 │       ├── __init__.py
@@ -56,10 +59,23 @@ transit_vision/
 │   ├── angle_calc.py         # 角度计算工具
 │   ├── driver_mask.py        # 司机掩码提取
 │   ├── frame_selector.py     # 帧选择工具
-│   └── bbox_saver.py         # bbox截图保存
+│   ├── bbox_saver.py         # bbox截图保存
+│   └── reid_utils.py         # ReID工具函数
 |
 └── data_structures/          # 自定义数据结构
     ├── __init__.py
     ├── person.py             # 定义Person对象(ID, frames, boxes, masks等)
     └── door.py               # 定义Door对象(mask, bbox, angle等)
 ```
+
+## 代码风格规范
+
+**左倾风格**: 代码追求简洁高效，命名精炼，避免冗余
+- 变量/函数名简短达意
+- 避免过度抽象和嵌套
+- 优先使用列表推导和函数式写法
+
+**注释规范**: 仅在逻辑复杂处添加必要注释
+- 核心算法逻辑: 简要说明关键步骤
+- 工具函数: 无需注释，代码即文档
+- 阈值参数: 标注含义(如"门内高度需达48%")
