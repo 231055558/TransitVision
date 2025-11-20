@@ -1,5 +1,1 @@
-from . import detection
-from . import reid
-
-__all__ = ['detection', 'reid']
-
+# 延迟导入避免依赖问题

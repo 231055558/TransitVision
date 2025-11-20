@@ -7,20 +7,29 @@ from transit_vision.utils import collect_images_from_folder
 import torch
 import numpy as np
 
-MODEL_PATH = "/mnt/mydisk/My_project/TransitVision/ckpt/transformer_20.pth"
+MODEL_PATH = "/mnt/mydisk/My_project/TransitVision/ckpt/pose2id/transformer_20.pth"
 CFG_PATH = "/mnt/mydisk/My_project/TransitVision/tests/pose2id_scheme/Pose2ID/IPG/cfg_transreid.pkl"
-TEST_DIR = "/mnt/mydisk/My_project/TransitVision/tests/pose2id_scheme/bus_data/reid_test"
+TEST_DIR = "/mnt/mydisk/My_project/TransitVision/data/reid_test"
 
 def test_feature_extraction():
     print("=== 测试特征提取 ===\n")
     
     extractor = ReIDFeatureExtractor(MODEL_PATH, CFG_PATH)
     
-    pre_folder = Path(TEST_DIR) / "pre_feature_1"
+    pre_folder = Path(TEST_DIR) / "pre_feature_001"
     images = collect_images_from_folder(pre_folder)[:5]
+    
+    if len(images) == 0:
+        print(f"✗ 测试数据不存在: {pre_folder}")
+        print(f"  请准备测试图像或修改TEST_DIR路径\n")
+        return
     
     print(f"提取 {len(images)} 张图像特征...")
     features = extractor.extract_batch(images, batch_size=4)
+    
+    if features is None:
+        print(f"✗ 特征提取失败\n")
+        return
     
     print(f"✓ 特征维度: {features.shape}")
     print(f"✓ 特征范数: {torch.norm(features, dim=1).mean():.4f}\n")
@@ -31,11 +40,19 @@ def test_nfc():
     
     extractor = ReIDFeatureExtractor(MODEL_PATH, CFG_PATH)
     
-    pre_folder = Path(TEST_DIR) / "pre_feature_1"
+    pre_folder = Path(TEST_DIR) / "pre_feature_001"
     images = collect_images_from_folder(pre_folder)[:10]
+    
+    if len(images) == 0:
+        print(f"✗ 测试数据不存在\n")
+        return
     
     print(f"提取特征...")
     features = extractor.extract_batch(images)
+    
+    if features is None:
+        print(f"✗ 特征提取失败\n")
+        return
     
     print(f"应用NFC...")
     features_nfc = apply_nfc(features, k1=2, k2=2)
@@ -49,8 +66,8 @@ def test_matching():
     
     extractor = ReIDFeatureExtractor(MODEL_PATH, CFG_PATH)
     
-    pre_folders = [f"pre_feature_{i}" for i in range(1, 4)]
-    cap_folders = [f"cap_feature_{i}" for i in range(1, 4)]
+    pre_folders = [f"pre_feature_{i:03d}" for i in range(1, 4)]
+    cap_folders = [f"cap_feature_{i:03d}" for i in range(1, 4)]
     
     pre_feats = []
     cap_feats = []
@@ -59,13 +76,19 @@ def test_matching():
         images = collect_images_from_folder(Path(TEST_DIR) / folder)[:5]
         if images:
             feat = extractor.extract_batch(images)
-            pre_feats.append(feat.mean(dim=0))
+            if feat is not None:
+                pre_feats.append(feat.mean(dim=0))
     
     for folder in cap_folders:
         images = collect_images_from_folder(Path(TEST_DIR) / folder)[:5]
         if images:
             feat = extractor.extract_batch(images)
-            cap_feats.append(feat.mean(dim=0))
+            if feat is not None:
+                cap_feats.append(feat.mean(dim=0))
+    
+    if len(pre_feats) == 0 or len(cap_feats) == 0:
+        print(f"✗ 测试数据不足\n")
+        return
     
     pre_feats = torch.stack(pre_feats)
     cap_feats = torch.stack(cap_feats)

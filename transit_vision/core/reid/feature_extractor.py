@@ -29,12 +29,7 @@ class ReIDFeatureExtractor:
     def _load_model(self, model_path, cfg_path):
         cfg = pickle.load(open(cfg_path, 'rb'))
         
-        # 动态导入Pose2ID模型
-        import sys
-        pose2id_path = Path(__file__).parent / 'pose2id_model'
-        sys.path.insert(0, str(pose2id_path))
-        
-        from make_model import make_model
+        from .pose2id_model import make_model
         
         model = make_model(cfg, num_class=751, camera_num=0, view_num=1)
         model.load_param(model_path)

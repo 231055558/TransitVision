@@ -520,3 +520,13 @@ tests/pose2id_scheme/reid_cross_match.py
 tests/pose2id_scheme/reid_feature_test.py
 tests/pose2id_scheme/reid_realtime_od.py
 tests/pose2id_scheme/reid_visualize_match.py
+transit_vision/__pycache__/__init__.cpython-311.pyc
+transit_vision/core/__pycache__/__init__.cpython-311.pyc
+.gitignore
+transit_vision/core/reid/__pycache__/__init__.cpython-310.pyc
+transit_vision/core/reid/__pycache__/__init__.cpython-311.pyc
+transit_vision/core/reid/__pycache__/feature_extractor.cpython-310.pyc
+transit_vision/core/reid/__pycache__/feature_extractor.cpython-311.pyc
+transit_vision/core/reid/__pycache__/matcher.cpython-310.pyc
+transit_vision/core/reid/__pycache__/nfc.cpython-310.pyc
+transit_vision/utils/__pycache__/reid_utils.cpython-310.pyc
