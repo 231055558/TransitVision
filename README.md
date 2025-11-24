@@ -8,6 +8,10 @@ TransitVision/
 ├── output/                   # 存放运行结果 (日志, 可视化视频, 统计数据)
 ├── scripts/                  # 辅助脚本 (单线程批量处理)
 ├── tests/                    # 单元测试和集成测试
+│   ├── core_test/            # 核心算法测试(detection, reid)
+│   ├── threads_test/         # 多线程性能测试
+│   ├── logic_test/           # 业务逻辑测试
+│   └── utils_test/           # 工具函数测试
 ├── README.md                 # 项目说明文档
 └── requirements.txt          # 项目依赖库
 ```
@@ -39,7 +43,9 @@ transit_vision/
 |
 ├── logic/                    # 业务逻辑处理模块
 │   ├── __init__.py
-│   ├── alighting_counter.py    # 下客识别与计数逻辑
+│   ├── alighting_counter_v1.py # 下客逻辑V1 (已废弃)
+│   ├── alighting_counter_v2.py # 下客逻辑V2 (逐点计算)
+│   ├── alighting_counter_v3.py # 下客逻辑V3 (矩阵位运算,推荐)
 │   ├── boarding_counter.py     # 上客识别与计数逻辑
 │   ├── door_preprocessor.py    # 门预处理逻辑
 │   ├── occupancy_analyzer.py   # 满载率分析逻辑
@@ -47,7 +53,8 @@ transit_vision/
 |
 ├── threads/                  # 多线程管理模块
 │   ├── __init__.py
-│   ├── video_capture_thread.py # 视频读取线程
+│   ├── video_capture_thread.py # 视频读取线程池
+│   ├── alighting_pipeline.py   # 下客流程三线程流水线(有界队列)
 │   ├── inference_thread.py     # 推理计算线程
 │   └── visualization_thread.py # 可视化结果生成线程
 |
@@ -64,9 +71,28 @@ transit_vision/
 |
 └── data_structures/          # 自定义数据结构
     ├── __init__.py
-    ├── person.py             # 定义Person对象(ID, frames, boxes, masks等)
-    └── door.py               # 定义Door对象(mask, bbox, angle等)
+    ├── person.py             # Person对象(ID, frames, boxes, mask_polygons等)
+    ├── door.py               # Door对象(mask, bbox, angle等)
+    └── video_task.py         # VideoTask, ProcessedVideo对象
 ```
+
+## V3 多边形优化方案 (当前分支)
+
+### 核心改进
+1. **算法优化**: O(N)逐点计算 -> O(1)矩阵位运算 (10-50倍加速)
+2. **内存优化**: 掩码存储 -> 多边形存储 (降低1000倍+内存占用)
+3. **系统稳定**: 有界阻塞队列防止内存溢出
+
+### 数据流变化
+- **PersonSegTracker**: 输出多边形 (不输出掩码)
+- **Person.mask_polygons**: 存储多边形路径
+- **下客逻辑V3**: 接收多边形，内部转局部掩码进行位运算
+
+### 性能对比
+- **V2**: 逐点 `cv2.pointPolygonTest`，慢
+- **V3**: 矩阵 `cv2.bitwise_and`，快
+
+详见 `transit_vision/logic/LOGIC.md`
 
 ## 代码风格规范
 

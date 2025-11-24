@@ -41,13 +41,17 @@ def test_person_track():
                 all_tracks[track_id].append(frame_idx)
                 
                 box = det['box']
-                mask = det['mask']
+                polygon = det['polygon']
                 conf = det['conf']
                 
-                if mask is not None:
-                    color = (int((track_id * 50) % 255), 
-                            int((track_id * 100) % 255),
-                            int((track_id * 150) % 255))
+                color = (int((track_id * 50) % 255), 
+                        int((track_id * 100) % 255),
+                        int((track_id * 150) % 255))
+                
+                if polygon is not None and len(polygon) > 0:
+                    # 将多边形转换为掩码用于可视化
+                    mask = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
+                    cv2.fillPoly(mask, [polygon], 255)
                     
                     mask_color = np.zeros_like(frame)
                     mask_color[mask > 0] = color

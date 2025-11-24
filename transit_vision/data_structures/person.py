@@ -3,15 +3,16 @@ class Person:
         self.id = track_id
         self.frames = []
         self.boxes = []
-        self.masks = []
+        self.masks = []  # 保留字段但不存数据(兼容性)
+        self.mask_polygons = []  # 存储多边形路径(内存优化)
         self.confs = []
         self.trigger_frame = None
     
-    def add_detection(self, frame_idx, box, mask=None, conf=None):
+    def add_detection(self, frame_idx, box, mask_polygon=None, conf=None):
         self.frames.append(frame_idx)
         self.boxes.append(box)
-        if mask is not None:
-            self.masks.append(mask)
+        if mask_polygon is not None:
+            self.mask_polygons.append(mask_polygon)
         if conf is not None:
             self.confs.append(conf)
     
@@ -28,6 +29,10 @@ class Person:
     @property
     def last_mask(self):
         return self.masks[-1] if self.masks else None
+    
+    @property
+    def last_polygon(self):
+        return self.mask_polygons[-1] if self.mask_polygons else None
     
     def __len__(self):
         return len(self.frames)

@@ -38,17 +38,21 @@ class PersonSegTracker:
                 conf_val = confs[i]
                 mask = masks[i] if masks is not None else None
                 
+                mask_polygon = None
                 if mask is not None:
                     h, w = frame.shape[:2]
                     mask_resized = cv2.resize(mask, (w, h))
-                    mask_binary = (mask_resized > 0.5).astype(np.uint8)
-                else:
-                    mask_binary = None
+                    mask_binary = (mask_resized > 0.5).astype(np.uint8) * 255
+                    
+                    # 转换为多边形 (内存优化)
+                    contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    if contours:
+                        mask_polygon = max(contours, key=cv2.contourArea)
                 
                 detections.append({
                     'id': track_id,
                     'box': box.tolist(),
-                    'mask': mask_binary,
+                    'polygon': mask_polygon,
                     'conf': float(conf_val)
                 })
         
@@ -69,7 +73,7 @@ class PersonSegTracker:
                 all_tracks[track_id].add_detection(
                     frame_idx,
                     det['box'],
-                    det['mask'],
+                    det['polygon'],
                     det['conf']
                 )
             
