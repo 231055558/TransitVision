@@ -108,11 +108,17 @@ def test_boarding_logic():
                 if frame_idx in person.frames:
                     idx = person.frames.index(frame_idx)
                     box = person.boxes[idx]
-                    mask = person.masks[idx]
+                    
+                    # 使用多边形
+                    polygon = person.mask_polygons[idx] if idx < len(person.mask_polygons) else None
                     
                     color = (0, 255, 0)
                     
-                    if mask is not None:
+                    if polygon is not None and len(polygon) > 0:
+                        # 将多边形转换为掩码用于可视化
+                        mask = np.zeros((rotated.shape[0], rotated.shape[1]), dtype=np.uint8)
+                        cv2.fillPoly(mask, [polygon], 255)
+                        
                         mask_color = np.zeros_like(rotated)
                         mask_color[mask > 0] = color
                         rotated = cv2.addWeighted(rotated, 1.0, mask_color, 0.4, 0)

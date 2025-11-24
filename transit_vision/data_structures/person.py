@@ -11,8 +11,7 @@ class Person:
     def add_detection(self, frame_idx, box, mask_polygon=None, conf=None):
         self.frames.append(frame_idx)
         self.boxes.append(box)
-        if mask_polygon is not None:
-            self.mask_polygons.append(mask_polygon)
+        self.mask_polygons.append(mask_polygon)
         if conf is not None:
             self.confs.append(conf)
     
