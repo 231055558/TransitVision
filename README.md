@@ -10,6 +10,11 @@ TransitVision/
 ├── tests/                    # 单元测试和集成测试
 │   ├── core_test/            # 核心算法测试(detection, reid)
 │   ├── threads_test/         # 多线程性能测试
+│   │   ├── test_gpu_strategy1_dynamic_batch.py      # GPU策略1: 动态批处理
+│   │   ├── test_gpu_strategy2_shared_sequential.py  # GPU策略2: 共享顺序推理
+│   │   ├── test_gpu_strategy3_batch_collect.py      # GPU策略3: 单线程批处理
+│   │   ├── test_gpu_strategies_compare.py           # GPU策略对比
+│   │   └── test_full_pipeline_monitor.py            # 完整流程监控
 │   ├── logic_test/           # 业务逻辑测试
 │   └── utils_test/           # 工具函数测试
 ├── README.md                 # 项目说明文档
@@ -43,9 +48,7 @@ transit_vision/
 |
 ├── logic/                    # 业务逻辑处理模块
 │   ├── __init__.py
-│   ├── alighting_counter_v1.py # 下客逻辑V1 (已废弃)
-│   ├── alighting_counter_v2.py # 下客逻辑V2 (逐点计算)
-│   ├── alighting_counter_v3.py # 下客逻辑V3 (矩阵位运算,推荐)
+│   ├── alighting_counter.py    # 下客识别与计数逻辑(矩阵位运算优化)
 │   ├── boarding_counter.py     # 上客识别与计数逻辑
 │   ├── door_preprocessor.py    # 门预处理逻辑
 │   ├── occupancy_analyzer.py   # 满载率分析逻辑
@@ -76,23 +79,38 @@ transit_vision/
     └── video_task.py         # VideoTask, ProcessedVideo对象
 ```
 
-## V3 多边形优化方案 (当前分支)
+## 核心优化
 
-### 核心改进
-1. **算法优化**: O(N)逐点计算 -> O(1)矩阵位运算 (10-50倍加速)
-2. **内存优化**: 掩码存储 -> 多边形存储 (降低1000倍+内存占用)
-3. **系统稳定**: 有界阻塞队列防止内存溢出
+### 算法优化
+- **下客逻辑**: O(N)逐点计算 -> O(1)矩阵位运算 (115倍加速)
+- **内存优化**: 掩码存储 -> 多边形存储 (降低1000倍+内存占用)
+- **系统稳定**: 有界阻塞队列防止内存溢出
 
-### 数据流变化
-- **PersonSegTracker**: 输出多边形 (不输出掩码)
-- **Person.mask_polygons**: 存储多边形路径
-- **下客逻辑V3**: 接收多边形，内部转局部掩码进行位运算
-
-### 性能对比
-- **V2**: 逐点 `cv2.pointPolygonTest`，慢
-- **V3**: 矩阵 `cv2.bitwise_and`，快
+### 数据流
+- **PersonSegTracker**: 输出多边形路径
+- **Person.mask_polygons**: 存储多边形(OpenCV contour格式)
+- **下客逻辑**: 接收多边形，内部转局部掩码进行位运算
 
 详见 `transit_vision/logic/LOGIC.md`
+
+## GPU推理策略
+
+### 策略1: 动态批处理
+多线程共享模型，动态收集帧组成batch推理
+- 优点: 批处理效率高
+- 缺点: 实现复杂，需要同步
+
+### 策略2: 共享顺序推理 (推荐)
+多线程共享模型，使用锁保证顺序推理
+- 优点: 显存占用最小，稳定可靠
+- 缺点: 推理串行化
+
+### 策略3: 单线程批处理
+先读取所有帧，后批量推理
+- 优点: GPU利用率高
+- 缺点: 内存占用大
+
+测试: `tests/threads_test/test_gpu_strategies_compare.py`
 
 ## 代码风格规范
 
