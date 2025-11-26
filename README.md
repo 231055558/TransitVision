@@ -16,6 +16,8 @@ TransitVision/
 │   │   ├── test_gpu_strategies_compare.py           # GPU策略对比
 │   │   └── test_full_pipeline_monitor.py            # 完整流程监控
 │   ├── logic_test/           # 业务逻辑测试
+│   ├── system_test/          # 系统模块化测试
+│   │   └── test_input_channel.py                    # 输入通道模块测试
 │   └── utils_test/           # 工具函数测试
 ├── README.md                 # 项目说明文档
 └── requirements.txt          # 项目依赖库
@@ -56,6 +58,7 @@ transit_vision/
 |
 ├── threads/                  # 多线程管理模块
 │   ├── __init__.py
+│   ├── input_channel.py        # 输入通道模块(多线路视频输入管理)
 │   ├── video_capture_thread.py # 视频读取线程池
 │   ├── alighting_pipeline.py   # 下客流程三线程流水线(有界队列)
 │   ├── inference_thread.py     # 推理计算线程
@@ -111,6 +114,21 @@ transit_vision/
 - 缺点: 内存占用大
 
 测试: `tests/threads_test/test_gpu_strategies_compare.py`
+
+## 系统模块化测试
+
+系统测试关注整体流线和输入输出一致性，使用 `data/close_loop_od/` 模拟数据
+
+### 输入通道模块
+- **功能**: 多线路视频输入管理和分配
+- **特点**: 支持32线并行，每线up+down同时输入
+- **输出**: 分配到up/down队列，便于后续推理
+- **测试**: `tests/system_test/test_input_channel.py`
+
+模拟数据说明:
+- 21个站点，每站包含up/down视频
+- 支持指定线路数(如32线)和站点数
+- 逐站处理并输出日志
 
 ## 代码风格规范
 

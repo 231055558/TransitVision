@@ -25,7 +25,7 @@ DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
 DEVICE_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "device_debug.yaml")
 
-NUM_STREAMS = 8
+NUM_STREAMS = 32
 
 class SystemMonitor:
     def __init__(self, interval=0.5):

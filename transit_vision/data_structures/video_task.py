@@ -7,6 +7,9 @@ import numpy as np
 class VideoTask:
     video_path: Path
     bus_id: str
+    direction: str = 'unknown'
+    station_id: int = 0
+    station_name: str = ''
     need_door_seg: bool = False
     need_angle_calc: bool = False
     first_frame: Optional[np.ndarray] = None
