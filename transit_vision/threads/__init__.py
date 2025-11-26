@@ -1,4 +1,3 @@
-from .video_capture_thread import VideoCaptureThreadPool, VideoCaptureWorker
 from .alighting_pipeline import (
     VideoReadThread,
     InferenceThread,
@@ -8,8 +7,6 @@ from .alighting_pipeline import (
 from .input_channel import InputChannel, MultiLineInputChannel, StationInput
 
 __all__ = [
-    'VideoCaptureThreadPool',
-    'VideoCaptureWorker',
     'VideoReadThread',
     'InferenceThread',
     'LogicThread',
@@ -18,12 +15,3 @@ __all__ = [
     'MultiLineInputChannel',
     'StationInput'
 ]
-
-
-
-
-
-
-
-
-

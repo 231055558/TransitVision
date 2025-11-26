@@ -24,7 +24,7 @@ def calculate_crowd_status(occupancy_rate: float, near_door_count: int, config: 
     if seat_vacancy_rate <= config['crowded_seat_rate']:
         return "3", (0, 255, 255), f"空座率≤{config['crowded_seat_rate']:.0%}"
     if config['comfortable_seat_rate_min'] <= seat_vacancy_rate <= (1.0 - config['crowded_seat_rate']):
-        return "2", (255, 0, 0), f"舒适"
+        return "2", (0, 255, 0), f"舒适"
     if seat_vacancy_rate > config['idle_seat_rate']:
         return "1", (0, 255, 0), f"空闲"
     
