@@ -5,6 +5,7 @@ from .alighting_pipeline import (
     AlightingPipeline
 )
 from .input_channel import InputChannel, MultiLineInputChannel, StationInput
+from .inference_channel import InferenceChannel, MultiDirectionInferenceChannel
 
 __all__ = [
     'VideoReadThread',
@@ -13,5 +14,7 @@ __all__ = [
     'AlightingPipeline',
     'InputChannel',
     'MultiLineInputChannel',
-    'StationInput'
+    'StationInput',
+    'InferenceChannel',
+    'MultiDirectionInferenceChannel'
 ]

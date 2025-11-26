@@ -50,6 +50,7 @@ transit_vision/
 ├── threads/                  # 多线程模块
 │   ├── __init__.py
 │   ├── input_channel.py      # 输入通道
+│   ├── inference_channel.py  # 推理通道
 │   └── alighting_pipeline.py # 下客流水线
 │
 ├── utils/                    # 工具模块
@@ -92,7 +93,8 @@ tests/
 │   └── test_logic_performance.py
 │
 ├── system_test/
-│   └── test_input_channel.py
+│   ├── test_input_channel.py
+│   └── test_inference_channel.py
 │
 ├── utils_test/
 │   ├── test_video_reader.py
@@ -102,7 +104,7 @@ tests/
     └── (ReID相关测试和数据)
 ```
 
-## 代码风格规范
+## 代码风格规范（严格遵守）
 
 **左倾风格**: 代码追求简洁高效，命名精炼，避免冗余
 - 变量/函数名简短达意
