@@ -13,7 +13,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from transit_vision.logic.boarding_counter import filter_boarding_passengers
-from transit_vision.logic.alighting_counter_v2 import filter_alighting_passengers
+from transit_vision.logic.alighting_counter import filter_alighting_passengers
 from transit_vision.data_structures import Person
 
 def generate_mock_tracks(num_tracks=30, num_frames=50):
@@ -112,7 +112,7 @@ for threads, total, avg, speedup in boarding_results:
 
 # ==================== 测试2: 下车逻辑 ====================
 print("\n" + "=" * 60)
-print("测试2: 下车逻辑算法 (alighting_counter_v2)")
+print("测试2: 下车逻辑算法 (alighting_counter)")
 print("=" * 60)
 
 def process_alighting_worker(tracks, idx):

@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from ..utils.video_reader import VideoReader
 from ..core.detection import PersonSegTracker
-from ..logic.alighting_counter_v3 import filter_alighting_passengers
+from ..logic.alighting_counter import filter_alighting_passengers
 from ..data_structures import Person
 
 class VideoReadThread(threading.Thread):

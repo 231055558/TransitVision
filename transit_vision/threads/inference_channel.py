@@ -48,6 +48,11 @@ class InferenceChannel:
                 
             except queue.Empty:
                 continue
+            except Exception as e:
+                print(f"Worker {worker_id} error processing task: {e}")
+                import traceback
+                traceback.print_exc()
+                self.input_queue.task_done()
     
     def _process_task(self, task: VideoTask):
         """处理单个视频任务"""
@@ -186,4 +191,5 @@ class MultiDirectionInferenceChannel:
             'total_processed': up_stats['processed'] + down_stats['processed'],
             'total_frames': up_stats['total_frames'] + down_stats['total_frames']
         }
+
 
