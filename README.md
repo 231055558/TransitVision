@@ -4,9 +4,13 @@ TransitVision/
 ├── transit_vision/           # 核心源代码包
 ├── configs/                  # 配置文件目录
 ├── data/                     # 数据样本和测试视频
+│   ├── close_loop_od/        # 闭环OD测试数据
+│   ├── reid_test/            # ReID测试数据
+│   └── reid_dataset/         # ReID数据集(脚本生成)
 ├── ckpt/                     # 存放模型权重文件
 ├── output/                   # 存放运行结果
 ├── scripts/                  # 辅助脚本
+│   └── extract_reid_data.py  # ReID数据提取脚本
 ├── tests/                    # 测试目录
 │   ├── core_test/            # 核心算法测试
 │   ├── logic_test/           # 业务逻辑测试
@@ -51,6 +55,7 @@ transit_vision/
 │   ├── __init__.py
 │   ├── input_channel.py      # 输入通道
 │   ├── inference_channel.py  # 推理通道
+│   ├── logic_channel.py      # 逻辑运算通道
 │   └── alighting_pipeline.py # 下客流水线
 │
 ├── utils/                    # 工具模块
@@ -94,7 +99,8 @@ tests/
 │
 ├── system_test/
 │   ├── test_input_channel.py
-│   └── test_inference_channel.py
+│   ├── test_inference_channel.py
+│   └── test_logic_channel.py
 │
 ├── utils_test/
 │   ├── test_video_reader.py
@@ -128,4 +134,5 @@ tests/
 **允许操作**:
 - 修改现有代码文件
 - 创建明确要求的代码文件
+- 根据要求完成后更新README的文件目录
 - 在对话中使用命令行测试

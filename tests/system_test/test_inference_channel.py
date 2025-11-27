@@ -16,9 +16,9 @@ PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
 DEVICE_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "device_debug.yaml")
 
-NUM_LINES = 2
-BATCH_SIZE = 32
-NUM_WORKERS = 4
+NUM_LINES = 4
+BATCH_SIZE = 64 # 减小batch size以避免CPU NMS超时
+NUM_WORKERS = 2
 MAX_STATIONS = 3
 
 def test_inference_channel():
@@ -92,19 +92,26 @@ def test_inference_channel():
         
         print(f"  提交到推理通道: {submitted} 任务")
         
-        # 等待推理处理 (直到本站任务全部完成或超时)
-        print(f"  正在推理... (提交: {submitted})")
+        # 等待推理处理
+        print(f"  等待推理完成...")
         wait_start = time.time()
+        check_count = 0
         while True:
             stats = inference_channel.get_total_stats()
+            
+            check_count += 1
+            if check_count % 4 == 0:
+                elapsed = time.time() - wait_start
+                print(f"    [{elapsed:.1f}s] 已处理 {stats['total_processed']}/{initial_processed + submitted} 视频, "
+                      f"{stats['total_frames']} 帧")
+            
             if stats['total_processed'] >= initial_processed + submitted:
+                print(f"    ✓ 推理完成")
                 break
-            
-            if time.time() - wait_start > 120:  # 2分钟超时
-                print("  ⚠ 推理超时")
+            if time.time() - wait_start > 120:
+                print(f"  ⚠ 推理超时")
                 break
-            
-            time.sleep(1)
+            time.sleep(0.5)
             
         # 获取统计
         inf_stats = inference_channel.get_total_stats()

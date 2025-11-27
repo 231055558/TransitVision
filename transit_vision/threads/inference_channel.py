@@ -13,12 +13,12 @@ from ..data_structures import VideoTask
 class InferenceChannel:
     """推理通道管理器"""
     def __init__(self, model_path: str, tracker_config: str, device_config: DeviceConfig, 
-                 batch_size=128, queue_size=200):
+                 batch_size=128, queue_size=200, shared_lock=None):
         self.batch_size = batch_size
         self.input_queue = queue.Queue(maxsize=queue_size)
         self.output_queue = queue.Queue(maxsize=queue_size)
         self.tracker = PersonSegTracker(model_path, tracker_config, device_config)
-        self.inference_lock = threading.Lock()
+        self.inference_lock = shared_lock if shared_lock else threading.Lock()
         self.workers = []
         self.running = False
         self.stats = {
@@ -68,17 +68,15 @@ class InferenceChannel:
                 frame_indices.append(frame_idx)
                 frame_count += 1
                 
-                # 达到batch大小或视频结束时推理
                 if len(frames_batch) >= self.batch_size:
                     self._inference_batch(frames_batch, frame_indices, all_tracks)
                     frames_batch = []
                     frame_indices = []
+                    self.stats['total_frames'] += self.batch_size
             
-            # 处理剩余帧
             if frames_batch:
                 self._inference_batch(frames_batch, frame_indices, all_tracks)
-        
-        self.stats['total_frames'] += frame_count
+                self.stats['total_frames'] += len(frames_batch)
         
         return {
             'task': task,
@@ -146,11 +144,17 @@ class MultiDirectionInferenceChannel:
     """多方向推理通道(up/down分离)"""
     def __init__(self, model_path: str, tracker_config: str, device_config: DeviceConfig,
                  batch_size=128, num_workers=4):
+        # 创建全局推理锁，强制所有通道串行使用GPU/CPU
+        # 这能有效防止NMS竞争导致的超时
+        self.global_lock = threading.Lock()
+        
         self.up_channel = InferenceChannel(
-            model_path, tracker_config, device_config, batch_size
+            model_path, tracker_config, device_config, batch_size, 
+            shared_lock=self.global_lock
         )
         self.down_channel = InferenceChannel(
-            model_path, tracker_config, device_config, batch_size
+            model_path, tracker_config, device_config, batch_size,
+            shared_lock=self.global_lock
         )
         self.num_workers = num_workers
     

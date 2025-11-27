@@ -7,7 +7,8 @@ from transit_vision.core.detection import PersonSegTracker
 import cv2
 import numpy as np
 
-VIDEO_PATH = "/mnt/mydisk/My_project/bus_down/reid_mark/od_1021/36路/8-6163/2025-10-20-08-41_8-6163_杨家门_up.mp4"
+# VIDEO_PATH = "/mnt/mydisk/My_project/TransitVision/data/close_loop_od/1_down.mp4"
+VIDEO_PATH = "/mnt/mydisk/My_project/TransitVision/data/close_loop_od/1_up.mp4"
 MODEL_PATH = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
 DEVICE_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "device_debug.yaml")
