@@ -6,7 +6,8 @@ TransitVision/
 ├── data/                     # 数据样本和测试视频
 │   ├── close_loop_od/        # 闭环OD测试数据
 │   ├── reid_test/            # ReID测试数据
-│   └── reid_dataset/         # ReID数据集(脚本生成)
+│   ├── reid_dataset/         # ReID数据集(脚本生成)
+│   └── reid_features/        # ReID特征数据(测试生成)
 ├── ckpt/                     # 存放模型权重文件
 ├── output/                   # 存放运行结果
 ├── scripts/                  # 辅助脚本
@@ -100,7 +101,8 @@ tests/
 ├── system_test/
 │   ├── test_input_channel.py
 │   ├── test_inference_channel.py
-│   └── test_logic_channel.py
+│   ├── test_logic_channel.py
+│   └── test_reid_channel.py
 │
 ├── utils_test/
 │   ├── test_video_reader.py
