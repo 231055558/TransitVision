@@ -730,3 +730,8 @@ data/reid_dataset/line_0/up/9/0_9_2_1_up.png
 data/reid_dataset/line_0/up/9/0_9_2_2_up.png
 data/reid_dataset/line_0/up/9/0_9_2_3_up.png
 data/reid_dataset/line_0/up/9/0_9_2_4_up.png
+transit_vision/threads/__pycache__/__init__.cpython-310.pyc
+transit_vision/threads/__pycache__/alighting_pipeline.cpython-310.pyc
+transit_vision/threads/__pycache__/alighting_pipeline.cpython-311.pyc
+transit_vision/threads/__pycache__/inference_channel.cpython-310.pyc
+transit_vision/threads/__pycache__/logic_channel.cpython-310.pyc
