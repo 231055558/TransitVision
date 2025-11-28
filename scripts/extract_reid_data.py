@@ -18,10 +18,10 @@ DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent / "configs" / "botsort_seg.yaml")
 DEVICE_CONFIG = str(Path(__file__).parent.parent / "configs" / "device_debug.yaml")
 
-NUM_LINES = 2
+NUM_LINES = 1
 BATCH_SIZE = 64
 NUM_WORKERS = 2
-MAX_STATIONS = 3
+MAX_STATIONS = 21
 
 def select_frames(total_frames, n=7):
     """从总帧数中均匀选择n帧,然后掐头去尾保留中间n-2帧"""
@@ -35,12 +35,15 @@ def select_frames(total_frames, n=7):
     return indices
 
 def save_person_crops(video_path, person, line_id, station_id, person_idx, 
-                     output_dir, rotation_angle=None):
+                     direction, output_dir, rotation_angle=None):
     """保存单个人的bbox截图"""
     if len(person.frames) < 7:
         return 0
     
     selected_indices = select_frames(len(person.frames))
+    
+    station_dir = output_dir / f"line_{line_id}" / direction / str(station_id)
+    station_dir.mkdir(parents=True, exist_ok=True)
     
     with VideoReader(video_path) as reader:
         saved_count = 0
@@ -61,8 +64,8 @@ def save_person_crops(video_path, person, line_id, station_id, person_idx,
             
             crop = frame[y1:y2, x1:x2]
             if crop.size > 0:
-                filename = f"{line_id}_{station_id}_{person_idx}_{saved_count}.png"
-                save_path = output_dir / filename
+                filename = f"{line_id}_{station_id}_{person_idx}_{saved_count}_{direction}.png"
+                save_path = station_dir / filename
                 cv2.imwrite(str(save_path), crop)
                 saved_count += 1
     
@@ -104,7 +107,8 @@ def extract_reid_data():
     
     import time
     
-    station_results = {}
+    total_saved = 0
+    person_global_idx = {}
     
     for station in stations:
         station_id = station.station_id - 1
@@ -160,29 +164,12 @@ def extract_reid_data():
                 if result:
                     results.append(result)
         
-        station_results[station_id] = {
-            'tasks': task_map,
-            'results': results
-        }
-        
         print(f"  收集到 {len(results)} 个结果")
-    
-    print("\n停止所有通道...")
-    input_channel.stop_all()
-    logic_channel.stop()
-    print("✓ 所有通道已停止")
-    
-    print(f"\n{'='*70}")
-    print("开始提取图片...")
-    print(f"{'='*70}")
-    
-    total_saved = 0
-    person_global_idx = {}
-    
-    for station_id, data in sorted(station_results.items()):
-        print(f"\n[站点 {station_id}]")
         
-        for result in data['results']:
+        print(f"  开始保存图片...")
+        station_saved = 0
+        
+        for result in results:
             task = result['task']
             passengers = result['valid_passengers']
             direction = task.direction
@@ -190,7 +177,7 @@ def extract_reid_data():
             line_id = None
             for lid in range(NUM_LINES):
                 task_key = f"{lid}_{direction}"
-                if task_key in data['tasks'] and data['tasks'][task_key].bus_id == task.bus_id:
+                if task_key in task_map and task_map[task_key].bus_id == task.bus_id:
                     line_id = lid
                     break
             
@@ -214,7 +201,7 @@ def extract_reid_data():
                     if angle is not None:
                         rotation_angle = -angle
             
-            print(f"  线路{line_id} {direction.upper()}: {len(passengers)}人")
+            print(f"    线路{line_id} {direction.upper()}: {len(passengers)}人")
             
             key = f"{line_id}_{station_id}"
             if key not in person_global_idx:
@@ -224,14 +211,22 @@ def extract_reid_data():
                 person_idx = person_global_idx[key]
                 saved = save_person_crops(
                     task.video_path, person, line_id, station_id, 
-                    person_idx, OUTPUT_DIR, rotation_angle
+                    person_idx, direction, OUTPUT_DIR, rotation_angle
                 )
                 if saved > 0:
-                    print(f"    ID {track_id} -> person_{person_idx}: 保存 {saved} 张图片")
-                    total_saved += saved
+                    print(f"      ID {track_id} -> person_{person_idx}: 保存 {saved} 张图片")
+                    station_saved += saved
                     person_global_idx[key] += 1
                 else:
-                    print(f"    ID {track_id}: 帧数不足(<7), 跳过")
+                    print(f"      ID {track_id}: 帧数不足(<7), 跳过")
+        
+        total_saved += station_saved
+        print(f"  ✓ 本站保存: {station_saved} 张图片, 累计: {total_saved} 张")
+    
+    print("\n停止所有通道...")
+    input_channel.stop_all()
+    logic_channel.stop()
+    print("✓ 所有通道已停止")
     
     print(f"\n{'='*70}")
     print("提取完成!")

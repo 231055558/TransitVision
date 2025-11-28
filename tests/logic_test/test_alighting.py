@@ -8,8 +8,8 @@ from transit_vision.logic import preprocess_rear_door, filter_alighting_passenge
 import cv2
 import numpy as np
 
-DOOR_VIDEO = "/mnt/mydisk/My_project/bus_down/reid_mark/od_1021/36路/8-6161/2025-10-20-07-01_8-6161_杨家门_down.mp4"
-TEST_VIDEO = "/mnt/mydisk/My_project/od_identification/bus_data/拥堵视频-1011/8-2-8116-002.mp4"
+DOOR_VIDEO = "/mnt/mydisk/My_project/TransitVision/data/close_loop_od/1_down.mp4"
+TEST_VIDEO = "/mnt/mydisk/My_project/TransitVision/data/close_loop_od/20_down.mp4"
 PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
 DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
 TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
