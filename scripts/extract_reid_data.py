@@ -8,20 +8,38 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import cv2
 import numpy as np
+import yaml
 from transit_vision.threads import MultiLineInputChannel, MultiDirectionLogicChannel
 from transit_vision.utils import DeviceConfig, VideoReader, rotate_frame
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "close_loop_od"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "reid_dataset"
-PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
-DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
-TRACKER_CONFIG = str(Path(__file__).parent.parent / "configs" / "botsort_seg.yaml")
-DEVICE_CONFIG = str(Path(__file__).parent.parent / "configs" / "device_debug.yaml")
+PROJECT_ROOT = Path(__file__).parent.parent
 
-NUM_LINES = 1
-BATCH_SIZE = 64
-NUM_WORKERS = 2
-MAX_STATIONS = 21
+# 加载系统配置
+SYSTEM_CONFIG = PROJECT_ROOT / "configs" / "system_config.yaml"
+with open(SYSTEM_CONFIG, 'r', encoding='utf-8') as f:
+    system_cfg = yaml.safe_load(f)
+
+DATA_DIR = PROJECT_ROOT / system_cfg['data']['input_dir']
+OUTPUT_DIR = PROJECT_ROOT / "data" / "reid_dataset"
+PERSON_MODEL = system_cfg['models']['person_model']
+DOOR_MODEL = system_cfg['models']['door_model']
+TRACKER_CONFIG = str(PROJECT_ROOT / system_cfg['configs']['tracker_config'])
+DEVICE_CONFIG = str(PROJECT_ROOT / system_cfg['configs']['device_config'])
+
+NUM_LINES = system_cfg['system']['num_lines']
+BATCH_SIZE = system_cfg['system']['batch_size']
+NUM_WORKERS = system_cfg['system']['logic_workers']
+MAX_STATIONS = system_cfg['system']['max_stations']
+
+RECALC_DOOR_UP = system_cfg['door']['recalc_per_video_up']
+RECALC_DOOR_DOWN = system_cfg['door']['recalc_per_video_down']
+
+# 加载逻辑配置
+LOGIC_CONFIG = PROJECT_ROOT / system_cfg['configs']['logic_config']
+with open(LOGIC_CONFIG, 'r', encoding='utf-8') as f:
+    logic_cfg = yaml.safe_load(f)
+
+DOOR_DETECTION_CONF = logic_cfg['alighting_counter']['person_conf']
 
 def select_frames(total_frames, n=7):
     """从总帧数中均匀选择n帧,然后掐头去尾保留中间n-2帧"""
@@ -79,6 +97,8 @@ def extract_reid_data():
     print(f"输出目录: {OUTPUT_DIR}")
     print(f"并行线路数: {NUM_LINES}")
     print(f"测试站点数: {MAX_STATIONS}")
+    print(f"上车门框重算: {RECALC_DOOR_UP}")
+    print(f"下车门框重算: {RECALC_DOOR_DOWN}")
     print()
     
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -106,6 +126,13 @@ def extract_reid_data():
     print("=" * 70)
     
     import time
+    from transit_vision.logic import preprocess_front_door, preprocess_rear_door
+    from transit_vision.core.detection import DoorSegmentor
+    from transit_vision.utils import read_first_frame
+    
+    door_seg = DoorSegmentor(DOOR_MODEL, device_cfg)
+    door_cache_up = {}
+    door_cache_down = {}
     
     total_saved = 0
     person_global_idx = {}
@@ -189,17 +216,41 @@ def extract_reid_data():
             
             rotation_angle = None
             if direction == 'up':
-                from transit_vision.logic import preprocess_front_door
-                from transit_vision.core.detection import DoorSegmentor
-                from transit_vision.utils import read_first_frame
-                
-                door_seg = DoorSegmentor(DOOR_MODEL, device_cfg)
-                first_frame = read_first_frame(task.video_path)
-                door = door_seg.detect(first_frame, conf=0.3)
-                if door:
-                    angle, _ = preprocess_front_door(door, first_frame)
-                    if angle is not None:
-                        rotation_angle = -angle
+                # 上车视频处理
+                if RECALC_DOOR_UP:
+                    first_frame = read_first_frame(task.video_path)
+                    door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                    if door:
+                        angle, _ = preprocess_front_door(door, first_frame)
+                        if angle is not None:
+                            rotation_angle = -angle
+                else:
+                    cache_key = f"{line_id}_up"
+                    if cache_key not in door_cache_up:
+                        first_frame = read_first_frame(task.video_path)
+                        door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                        if door:
+                            angle, _ = preprocess_front_door(door, first_frame)
+                            if angle is not None:
+                                rotation_angle = -angle
+                                door_cache_up[cache_key] = rotation_angle
+                    else:
+                        rotation_angle = door_cache_up[cache_key]
+            elif direction == 'down':
+                # 下车视频处理(虽然不需要rotation_angle,但为了一致性也处理缓存)
+                if RECALC_DOOR_DOWN:
+                    first_frame = read_first_frame(task.video_path)
+                    door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                    if door:
+                        door_mask = preprocess_rear_door(door)
+                else:
+                    cache_key = f"{line_id}_down"
+                    if cache_key not in door_cache_down:
+                        first_frame = read_first_frame(task.video_path)
+                        door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                        if door:
+                            door_mask = preprocess_rear_door(door)
+                            door_cache_down[cache_key] = door_mask
             
             print(f"    线路{line_id} {direction.upper()}: {len(passengers)}人")
             

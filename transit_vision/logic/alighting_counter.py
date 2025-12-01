@@ -30,34 +30,26 @@ def polygon_to_local_mask(polygon, box):
     
     return local_mask
 
-def check_door_entry_v3(person_polygon, box, door_polygon, threshold=0.5):
+def check_door_entry_v3(person_polygon, box, door_mask, threshold=0.5):
     """
     V3版本: 使用矩阵位运算检测进门 (O(1) 复杂度)
     
     Args:
         person_polygon: 人物多边形 (全局坐标)
         box: 人物bbox [x1, y1, x2, y2]
-        door_polygon: 门多边形 (全局坐标)
+        door_mask: 门掩码 (全局掩码，保持原始精度)
         threshold: 重叠阈值
     
     Returns:
         bool: 是否进入门区域
     """
-    if person_polygon is None or door_polygon is None:
+    if person_polygon is None or door_mask is None:
         return False
     
-    if len(person_polygon) < 3 or len(door_polygon) < 3:
+    if len(person_polygon) < 3:
         return False
     
     x1, y1, x2, y2 = map(int, box)
-    
-    # 快速bbox预检
-    door_poly_np = door_polygon.squeeze() if door_polygon.ndim == 3 else door_polygon
-    poly_x_min, poly_y_min = door_poly_np.min(axis=0)
-    poly_x_max, poly_y_max = door_poly_np.max(axis=0)
-    
-    if x2 < poly_x_min or x1 > poly_x_max or y2 < poly_y_min or y1 > poly_y_max:
-        return False
     
     # 计算上4/5区域
     h = y2 - y1
@@ -73,9 +65,13 @@ def check_door_entry_v3(person_polygon, box, door_polygon, threshold=0.5):
     if person_local is None:
         return False
     
-    # 2. 转换门多边形到局部掩码
-    door_local = polygon_to_local_mask(door_polygon, upper_box)
-    if door_local is None:
+    # 2. 提取门掩码的局部区域
+    door_local = door_mask[y1:y1+upper_h, x1:x2]
+    if door_local.size == 0:
+        return False
+    
+    # 确保尺寸一致
+    if door_local.shape != person_local.shape:
         return False
     
     # 3. 矩阵位运算 (核心优化)
@@ -89,65 +85,125 @@ def check_door_entry_v3(person_polygon, box, door_polygon, threshold=0.5):
     ratio = overlap_pixels / person_pixels
     return ratio >= threshold
 
-def check_box_overlap_with_polygon(body_box, door_polygon):
+def check_box_overlap_with_mask(body_box, door_mask):
     """
-    检查bbox是否与门多边形重叠
+    检查bbox是否与门掩码重叠
     
     Args:
         body_box: [x1, y1, x2, y2]
-        door_polygon: 门多边形
+        door_mask: 门掩码
     
     Returns:
         bool: 是否重叠
     """
-    if body_box is None or door_polygon is None:
-        return False
-    
-    if len(door_polygon) < 3:
+    if body_box is None or door_mask is None:
         return False
     
     x1, y1, x2, y2 = map(int, body_box)
     
-    # 快速bbox预检
-    door_poly_np = door_polygon.squeeze() if door_polygon.ndim == 3 else door_polygon
-    poly_x_min, poly_y_min = door_poly_np.min(axis=0)
-    poly_x_max, poly_y_max = door_poly_np.max(axis=0)
+    # 确保坐标在有效范围内
+    x1 = max(0, x1)
+    y1 = max(0, y1)
+    x2 = min(door_mask.shape[1], x2)
+    y2 = min(door_mask.shape[0], y2)
     
-    if x2 < poly_x_min or x1 > poly_x_max or y2 < poly_y_min or y1 > poly_y_max:
+    if x2 <= x1 or y2 <= y1:
         return False
     
-    # 检查bbox四个角点是否在多边形内
-    corners = [
-        (x1, y1), (x2, y1),
-        (x1, y2), (x2, y2)
-    ]
+    # 检查bbox区域内是否有门掩码
+    box_region = door_mask[y1:y2, x1:x2]
+    return np.any(box_region > 0)
+
+def get_upper_region_mask(person_polygon, box, frame_shape):
+    """
+    获取上4/5区域的全局掩码 (用于可视化调试)
     
-    for corner in corners:
-        if cv2.pointPolygonTest(door_poly_np.astype(np.float32), corner, False) >= 0:
-            return True
+    Args:
+        person_polygon: 人物多边形
+        box: [x1, y1, x2, y2]
+        frame_shape: (height, width)
     
-    return False
+    Returns:
+        mask: 全局掩码
+    """
+    if person_polygon is None or len(person_polygon) < 3:
+        return None
+    
+    x1, y1, x2, y2 = map(int, box)
+    h = y2 - y1
+    upper_h = int(h * 4 / 5)
+    
+    if upper_h <= 0:
+        return None
+    
+    upper_box = [x1, y1, x2, y1 + upper_h]
+    
+    person_local = polygon_to_local_mask(person_polygon, upper_box)
+    if person_local is None:
+        return None
+    
+    mask = np.zeros(frame_shape[:2], dtype=np.uint8)
+    mask[y1:y1+upper_h, x1:x2] = person_local
+    
+    return mask
+
+def get_overlap_region_mask(person_polygon, box, door_mask, frame_shape):
+    """
+    获取上4/5区域与门框重叠的全局掩码 (用于可视化调试)
+    
+    Args:
+        person_polygon: 人物多边形
+        box: [x1, y1, x2, y2]
+        door_mask: 门掩码 (全局掩码)
+        frame_shape: (height, width)
+    
+    Returns:
+        mask: 全局掩码
+    """
+    if person_polygon is None or door_mask is None:
+        return None
+    
+    if len(person_polygon) < 3:
+        return None
+    
+    x1, y1, x2, y2 = map(int, box)
+    h = y2 - y1
+    upper_h = int(h * 4 / 5)
+    
+    if upper_h <= 0:
+        return None
+    
+    upper_box = [x1, y1, x2, y1 + upper_h]
+    
+    person_local = polygon_to_local_mask(person_polygon, upper_box)
+    if person_local is None:
+        return None
+    
+    # 提取门掩码的局部区域
+    door_local = door_mask[y1:y1+upper_h, x1:x2]
+    if door_local.size == 0 or door_local.shape != person_local.shape:
+        return None
+    
+    intersection = cv2.bitwise_and(person_local, door_local)
+    
+    mask = np.zeros(frame_shape[:2], dtype=np.uint8)
+    mask[y1:y1+upper_h, x1:x2] = intersection
+    
+    return mask
 
 def filter_alighting_passengers(tracks, door_mask, threshold=0.5, grace_period=6):
     """
-    V3版本: 过滤下车乘客 (多边形输入 + 矩阵位运算)
+    V3版本: 过滤下车乘客 (人物多边形 + 门掩码 + 矩阵位运算)
     
     Args:
         tracks: dict, {track_id: Person}, Person.mask_polygons 存储多边形
-        door_mask: 门掩码 (用于提取门多边形)
+        door_mask: 门掩码 (直接使用，保持精度)
         threshold: 进门判定阈值
         grace_period: 消失宽限期
     
     Returns:
         dict: 下车乘客 {track_id: Person}
     """
-    # 从门掩码提取多边形
-    contours, _ = cv2.findContours(door_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        return {}
-    
-    door_polygon = max(contours, key=cv2.contourArea)
-    
     # 追踪状态
     track_state = {}
     valid = {}
@@ -186,12 +242,12 @@ def filter_alighting_passengers(tracks, door_mask, threshold=0.5, grace_period=6
                 box = person.boxes[idx]
                 state['last_box'] = box
                 
-                # 检查门内状态 (使用多边形)
+                # 检查门内状态 (使用人物多边形 + 门掩码)
                 if not state['has_intent'] and len(person.mask_polygons) > idx:
                     person_polygon = person.mask_polygons[idx]
                     
                     if person_polygon is not None and len(person_polygon) > 0:
-                        is_in = check_door_entry_v3(person_polygon, box, door_polygon, threshold)
+                        is_in = check_door_entry_v3(person_polygon, box, door_mask, threshold)
                         state['inside_history'].append(1 if is_in else 0)
                         
                         if len(state['inside_history']) > 20:
@@ -212,7 +268,7 @@ def filter_alighting_passengers(tracks, door_mask, threshold=0.5, grace_period=6
                 disappeared = frame_idx - state['last_seen_frame']
                 
                 if disappeared >= grace_period:
-                    if check_box_overlap_with_polygon(state['last_box'], door_polygon):
+                    if check_box_overlap_with_mask(state['last_box'], door_mask):
                         person = tracks[track_id]
                         
                         # 检查可靠性

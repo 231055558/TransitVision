@@ -10,21 +10,29 @@ import time
 import cv2
 import torch
 import numpy as np
+import yaml
 from collections import defaultdict
 from transit_vision.threads import MultiLineInputChannel, MultiDirectionLogicChannel
-from transit_vision.utils import DeviceConfig, VideoReader, rotate_frame
+from transit_vision.utils import DeviceConfig, VideoReader, rotate_frame, read_first_frame
 from transit_vision.core.reid import ReIDFeatureExtractor, compute_avg_similarity, greedy_matching
-from transit_vision.logic import preprocess_front_door
+from transit_vision.logic import preprocess_front_door, preprocess_rear_door
 from transit_vision.core.detection import DoorSegmentor
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data" / "close_loop_od"
-REID_DATA_DIR = Path(__file__).parent.parent.parent / "data" / "reid_features"
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+DATA_DIR = PROJECT_ROOT / "data" / "close_loop_od"
+REID_DATA_DIR = PROJECT_ROOT / "data" / "reid_features"
 PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
 DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
-TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
-DEVICE_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "device_debug.yaml")
+TRACKER_CONFIG = str(PROJECT_ROOT / "configs" / "botsort_seg.yaml")
+DEVICE_CONFIG = str(PROJECT_ROOT / "configs" / "device_debug.yaml")
+LOGIC_CONFIG = str(PROJECT_ROOT / "configs" / "logic_config.yaml")
 REID_MODEL = "/mnt/mydisk/My_project/TransitVision/ckpt/pose2id/transformer_20.pth"
 REID_CFG = "/mnt/mydisk/My_project/TransitVision/tests/pose2id_scheme/Pose2ID/IPG/cfg_transreid.pkl"
+
+# 加载逻辑配置
+with open(LOGIC_CONFIG, 'r', encoding='utf-8') as f:
+    logic_cfg = yaml.safe_load(f)
 
 NUM_LINES = 1
 BATCH_SIZE = 64
@@ -33,6 +41,9 @@ MAX_STATIONS = 21
 
 MATCH_THRESHOLD = 0.45
 FINAL_MATCH_THRESHOLD = 0.40
+RECALC_DOOR_PER_VIDEO_UP = False
+RECALC_DOOR_PER_VIDEO_DOWN = False
+DOOR_DETECTION_CONF = logic_cfg['alighting_counter']['person_conf']
 
 def select_frames(total_frames, n=7):
     """从总帧数中均匀选择n帧,然后掐头去尾保留中间n-2帧"""
@@ -204,6 +215,8 @@ def test_reid_channel():
     print(f"测试站点数: {MAX_STATIONS}")
     print(f"匹配阈值: {MATCH_THRESHOLD}")
     print(f"最终匹配阈值: {FINAL_MATCH_THRESHOLD}")
+    print(f"上车门框重算: {RECALC_DOOR_PER_VIDEO_UP}")
+    print(f"下车门框重算: {RECALC_DOOR_PER_VIDEO_DOWN}")
     print()
     
     REID_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -237,6 +250,9 @@ def test_reid_channel():
     door_seg = DoorSegmentor(DOOR_MODEL, device_cfg)
     
     line_databases = [PassengerDatabase() for _ in range(NUM_LINES)]
+    
+    door_cache_up = {}
+    door_cache_down = {}
     
     for station in stations:
         station_id = station.station_id - 1
@@ -302,6 +318,27 @@ def test_reid_channel():
                 if task_line_id != line_id:
                     continue
                 
+                door_mask = None
+                if RECALC_DOOR_PER_VIDEO_DOWN:
+                    from transit_vision.utils import read_first_frame
+                    from transit_vision.logic import preprocess_rear_door
+                    first_frame = read_first_frame(task.video_path)
+                    door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                    if door:
+                        door_mask = preprocess_rear_door(door)
+                else:
+                    cache_key = f"{line_id}_down"
+                    if cache_key not in door_cache_down:
+                        from transit_vision.utils import read_first_frame
+                        from transit_vision.logic import preprocess_rear_door
+                        first_frame = read_first_frame(task.video_path)
+                        door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                        if door:
+                            door_mask = preprocess_rear_door(door)
+                            door_cache_down[cache_key] = door_mask
+                    else:
+                        door_mask = door_cache_down[cache_key]
+                
                 for track_id, person in passengers.items():
                     images = extract_person_images(task.video_path, person, rotation_angle=None)
                     
@@ -339,14 +376,31 @@ def test_reid_channel():
                 if task_line_id != line_id:
                     continue
                 
-                from transit_vision.utils import read_first_frame
-                first_frame = read_first_frame(task.video_path)
-                door = door_seg.detect(first_frame, conf=0.3)
                 rotation_angle = None
-                if door:
-                    angle, _ = preprocess_front_door(door, first_frame)
-                    if angle is not None:
-                        rotation_angle = -angle
+                door_bbox = None
+                if RECALC_DOOR_PER_VIDEO_UP:
+                    from transit_vision.utils import read_first_frame
+                    first_frame = read_first_frame(task.video_path)
+                    door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                    if door:
+                        angle, bbox = preprocess_front_door(door, first_frame)
+                        if angle is not None:
+                            rotation_angle = -angle
+                            door_bbox = bbox
+                else:
+                    cache_key = f"{line_id}_up"
+                    if cache_key not in door_cache_up:
+                        from transit_vision.utils import read_first_frame
+                        first_frame = read_first_frame(task.video_path)
+                        door = door_seg.detect(first_frame, conf=DOOR_DETECTION_CONF)
+                        if door:
+                            angle, bbox = preprocess_front_door(door, first_frame)
+                            if angle is not None:
+                                rotation_angle = -angle
+                                door_bbox = bbox
+                                door_cache_up[cache_key] = (rotation_angle, door_bbox)
+                    else:
+                        rotation_angle, door_bbox = door_cache_up[cache_key]
                 
                 for track_id, person in passengers.items():
                     images = extract_person_images(task.video_path, person, rotation_angle=rotation_angle)

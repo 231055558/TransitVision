@@ -1,0 +1,48 @@
+# TransitVision 系统配置文件
+
+# 数据路径
+data:
+  input_dir: "data/close_loop_od"
+  reid_features_dir: "data/reid_features"
+
+# 模型路径
+models:
+  person_model: "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
+  door_model: "/mnt/mydisk/My_project/bus_down/front_door.pt"
+  reid_model: "/mnt/mydisk/My_project/TransitVision/ckpt/pose2id/transformer_20.pth"
+  reid_cfg: "/mnt/mydisk/My_project/TransitVision/tests/pose2id_scheme/Pose2ID/IPG/cfg_transreid.pkl"
+
+# 配置文件
+configs:
+  tracker_config: "configs/botsort_seg.yaml"
+  device_config: "configs/device_debug.yaml"
+  logic_config: "configs/logic_config.yaml"
+
+# 系统参数
+system:
+  num_lines: 1              # 并行线路数
+  workers_per_line: 2       # 每条线路的输入通道工作线程数
+  logic_workers: 2          # 逻辑通道工作线程数
+  batch_size: 64            # 推理批次大小
+  max_stations: 21          # 处理的最大站点数
+
+# ReID参数
+reid:
+  match_threshold: 0.45           # 站点级匹配阈值
+  final_match_threshold: 0.40     # 最终交叉匹配阈值
+  feature_batch_size: 8           # ReID特征提取批次大小
+  min_frames: 7                   # 最少帧数要求
+  select_frames: 7                # 选择帧数
+
+# 门框计算参数（系统级）
+door:
+  recalc_per_video_up: false      # 是否每次上车视频都重新计算门框
+  recalc_per_video_down: true    # 是否每次下车视频都重新计算门框
+
+# 输出参数
+output:
+  save_features: true             # 是否保存特征图片
+  verbose: true                   # 是否输出详细日志
+  output_dir: "output/results"    # 输出结果目录
+
+

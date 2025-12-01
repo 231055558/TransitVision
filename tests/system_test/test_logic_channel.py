@@ -7,19 +7,30 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import time
+import yaml
 from transit_vision.threads import MultiLineInputChannel, MultiDirectionLogicChannel
 from transit_vision.utils import DeviceConfig
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data" / "close_loop_od"
-PERSON_MODEL = "/mnt/mydisk/My_project/bus_down/yolo11x-seg.pt"
-DOOR_MODEL = "/mnt/mydisk/My_project/bus_down/front_door.pt"
-TRACKER_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "botsort_seg.yaml")
-DEVICE_CONFIG = str(Path(__file__).parent.parent.parent / "configs" / "device_debug.yaml")
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
-NUM_LINES = 2
-BATCH_SIZE = 64
-NUM_WORKERS = 2
-MAX_STATIONS = 3
+# 加载系统配置
+SYSTEM_CONFIG = PROJECT_ROOT / "configs" / "system_config.yaml"
+with open(SYSTEM_CONFIG, 'r', encoding='utf-8') as f:
+    system_cfg = yaml.safe_load(f)
+
+DATA_DIR = PROJECT_ROOT / system_cfg['data']['input_dir']
+PERSON_MODEL = system_cfg['models']['person_model']
+DOOR_MODEL = system_cfg['models']['door_model']
+TRACKER_CONFIG = str(PROJECT_ROOT / system_cfg['configs']['tracker_config'])
+DEVICE_CONFIG = str(PROJECT_ROOT / system_cfg['configs']['device_config'])
+
+NUM_LINES = system_cfg['system']['num_lines']
+BATCH_SIZE = system_cfg['system']['batch_size']
+NUM_WORKERS = system_cfg['system']['logic_workers']
+MAX_STATIONS = system_cfg['system']['max_stations']
+
+RECALC_DOOR_UP = system_cfg['door']['recalc_per_video_up']
+RECALC_DOOR_DOWN = system_cfg['door']['recalc_per_video_down']
 
 def test_logic_channel():
     print("=" * 70)
@@ -28,6 +39,8 @@ def test_logic_channel():
     print(f"数据目录: {DATA_DIR}")
     print(f"并行线路数: {NUM_LINES}")
     print(f"测试站点数: {MAX_STATIONS}")
+    print(f"上车门框重算: {RECALC_DOOR_UP}")
+    print(f"下车门框重算: {RECALC_DOOR_DOWN}")
     print()
     
     device_cfg = DeviceConfig(DEVICE_CONFIG)
@@ -40,7 +53,8 @@ def test_logic_channel():
     print("\n创建逻辑通道...")
     logic_channel = MultiDirectionLogicChannel(
         PERSON_MODEL, TRACKER_CONFIG, DOOR_MODEL, device_cfg,
-        batch_size=BATCH_SIZE, num_workers=NUM_WORKERS
+        batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
+        recalc_door_up=RECALC_DOOR_UP, recalc_door_down=RECALC_DOOR_DOWN
     )
     print(f"✓ 逻辑通道已创建")
     

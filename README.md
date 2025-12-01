@@ -3,6 +3,9 @@
 TransitVision/
 ├── transit_vision/           # 核心源代码包
 ├── configs/                  # 配置文件目录
+│   ├── system_config.yaml    # 系统主配置
+│   ├── botsort_seg.yaml      # 跟踪器配置
+│   └── device_*.yaml         # 设备配置
 ├── data/                     # 数据样本和测试视频
 │   ├── close_loop_od/        # 闭环OD测试数据
 │   ├── reid_test/            # ReID测试数据
@@ -10,6 +13,7 @@ TransitVision/
 │   └── reid_features/        # ReID特征数据(测试生成)
 ├── ckpt/                     # 存放模型权重文件
 ├── output/                   # 存放运行结果
+│   └── results/              # 系统运行结果(按时间戳组织)
 ├── scripts/                  # 辅助脚本
 │   └── extract_reid_data.py  # ReID数据提取脚本
 ├── tests/                    # 测试目录
@@ -123,6 +127,39 @@ tests/
 - 核心算法逻辑: 简要说明关键步骤
 - 工具函数: 无需注释，代码即文档
 - 阈值参数: 标注含义
+
+## 系统输出结果说明
+
+系统运行后会在 `output/results/run_YYYYMMDD_HHMMSS/` 目录下生成完整的结果:
+
+```
+output/results/run_20250101_120000/
+├── line_0/                           # 线路0的结果
+│   ├── station_00_站点名/            # 第0站结果
+│   │   ├── boarding/                 # 上车乘客
+│   │   │   ├── person_0.png         # 乘客0的中间帧图片
+│   │   │   └── person_1.png
+│   │   ├── alighting/                # 下车乘客
+│   │   │   └── person_0.png
+│   │   ├── boarding_info.json       # 上车信息(id, 图片路径)
+│   │   ├── alighting_info.json      # 下车信息(id, 图片, 匹配状态)
+│   │   └── occupancy_info.json      # 拥挤度信息
+│   ├── station_01_站点名/
+│   └── summary/                      # 最终汇总
+│       ├── matched_passengers.json   # 匹配成功的乘客(上下站信息)
+│       ├── station_statistics.json   # 各站统计
+│       ├── total_statistics.json     # 总体统计(闭环率等)
+│       └── passenger_count_curve.png # 车内人数折线图
+└── line_1/                           # 线路1的结果(如果有)
+```
+
+**下车乘客匹配状态**:
+- `immediate`: 下车时立即匹配成功
+- `pending`: 下车时未匹配(等待最终交叉匹配)
+- `final`: 最终交叉匹配成功
+- `unmatched`: 最终未匹配成功
+
+**实时查看**: 每处理完一站,该站的结果会立即保存,可实时查看。最终汇总在所有站点处理完成后生成。
 
 ## 开发规则
 

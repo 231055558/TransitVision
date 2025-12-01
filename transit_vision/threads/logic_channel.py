@@ -13,7 +13,8 @@ from ..data_structures import Person
 class LogicChannel:
     """单方向逻辑处理通道"""
     def __init__(self, direction: str, person_model: str, tracker_config: str, 
-                 door_model: str, device_config: DeviceConfig, batch_size=128, shared_lock=None):
+                 door_model: str, device_config: DeviceConfig, batch_size=128, shared_lock=None,
+                 recalc_door_per_video=False):
         self.direction = direction
         self.batch_size = batch_size
         self.person_model = person_model
@@ -22,6 +23,7 @@ class LogicChannel:
         self.door_segmentor = DoorSegmentor(door_model, device_config)
         self.inference_lock = shared_lock if shared_lock else threading.Lock()
         self.door_cache = {}
+        self.recalc_door_per_video = recalc_door_per_video
         self.workers = []
         self.running = False
         self.input_queue = queue.Queue(maxsize=200)
@@ -63,11 +65,14 @@ class LogicChannel:
         return bus_id
     
     def _get_door_info(self, video_path: str, bus_id: str):
-        """获取门信息(带缓存)"""
+        """获取门信息(带条件缓存)"""
         cache_key = self._extract_line_id(bus_id)
-        if cache_key in self.door_cache:
+        
+        # 如果不需要每次重算，且缓存中有，直接返回
+        if not self.recalc_door_per_video and cache_key in self.door_cache:
             return self.door_cache[cache_key]
         
+        # 检测门框
         first_frame = read_first_frame(video_path)
         door = self.door_segmentor.detect(first_frame, conf=0.3)
         
@@ -83,7 +88,10 @@ class LogicChannel:
             door_mask = preprocess_rear_door(door)
             door_info = {'mask': door_mask}
         
-        self.door_cache[cache_key] = door_info
+        # 如果不需要每次重算，保存到缓存
+        if not self.recalc_door_per_video:
+            self.door_cache[cache_key] = door_info
+        
         return door_info
     
     def _inference_video(self, video_path: str, rotation_angle=None):
@@ -141,7 +149,8 @@ class LogicChannel:
             return {
                 'task': task,
                 'valid_passengers': {},
-                'count': 0
+                'count': 0,
+                'door_info': None
             }
         
         rotation_angle = None
@@ -162,7 +171,8 @@ class LogicChannel:
         return {
             'task': task,
             'valid_passengers': valid,
-            'count': len(valid)
+            'count': len(valid),
+            'door_info': door_info  # 返回门框信息供后续使用
         }
     
     def submit_task(self, task):
@@ -208,17 +218,18 @@ class LogicChannel:
 class MultiDirectionLogicChannel:
     """多方向逻辑通道"""
     def __init__(self, person_model: str, tracker_config: str, door_model: str, 
-                 device_config: DeviceConfig, batch_size=128, num_workers=4):
+                 device_config: DeviceConfig, batch_size=128, num_workers=4,
+                 recalc_door_up=False, recalc_door_down=False):
         # 创建全局推理锁，强制所有通道串行使用GPU/CPU
         self.global_lock = threading.Lock()
         
         self.up_channel = LogicChannel(
             'up', person_model, tracker_config, door_model, device_config, 
-            batch_size, shared_lock=self.global_lock
+            batch_size, shared_lock=self.global_lock, recalc_door_per_video=recalc_door_up
         )
         self.down_channel = LogicChannel(
             'down', person_model, tracker_config, door_model, device_config,
-            batch_size, shared_lock=self.global_lock
+            batch_size, shared_lock=self.global_lock, recalc_door_per_video=recalc_door_down
         )
         self.num_workers = num_workers
     
