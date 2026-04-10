@@ -1,177 +1,80 @@
-## 文件结构说明
-```
+# TransitVision: Advanced Passenger OD Recognition System
+
+[English](README.md) | [中文](README_CN.md)
+
+TransitVision is a professional-grade solution for public transportation passenger analytics. It provides end-to-end Passenger **Origin-Destination (OD) recognition**, real-time **Occupancy Analysis**, and high-precision **Boarding/Alighting counting** tailored for extreme transit environments.
+
+## 🚀 Core Contributions & Highlights
+
+Our system is specifically engineered to overcome the unique challenges of bus-mounted surveillance:
+
+- **Public Transport Specific Data Augmentation**: Specialized image preprocessing and augmentation pipelines to handle **extreme lighting variations**, **color distortion**, and **severe camera vibration** common in moving vehicles.
+- **Fine-tuned YOLO11x-Seg & ReID**: Deeply optimized YOLO11x segmentation models for precise person/door masking and custom ReID hyperparameters to ensure robustness under low-quality imaging.
+- **Pose2ID Integration**: We introduced a **Pose2ID** scheme that utilizes pose-aware feature extraction to significantly improve ReID accuracy across different camera perspectives (e.g., matching a front-door boarding view with a rear-door alighting view), effectively eliminating "camera view bias."
+- **Industrial Deployment**: Successfully applied in urban public transport systems for transit network optimization and station throughput analysis.
+
+---
+
+## 🧠 Algorithmic Logic
+
+TransitVision employs three sophisticated logic channels to ensure high accuracy in complex scenarios:
+
+### 1. Adaptive Door Preprocessing (`door_preprocessor.py`)
+Rather than using static regions of interest (ROI), our system dynamically segments the bus doors:
+- **Denoising & CC Filtering**: Uses Connected Component (CC) analysis to isolate the door structure from background noise.
+- **Geometric Correction**: Automatically calculates the door's rotation angle and applies affine transformations to align the coordinate system, ensuring consistent spatial logic regardless of camera installation tilt.
+
+### 2. Pattern-based Boarding Recognition (`boarding_counter.py`)
+To distinguish between actual passengers and pedestrians walking outside the vehicle:
+- **Spatial Transition Analysis**: Tracks the "Overlap Ratio" between the person's bbox and the door mask. It looks for a specific pattern (Outside -> Inside -> Door Center Crossing).
+- **Height-based Filtering**: Implements a physical constraint check. Passengers inside the bus must meet a relative height threshold (avg height > 48% of door height) to filter out false positives from the street level.
+
+### 3. V3 Alighting Logic with Bitwise Optimization (`alighting_counter.py`)
+For the high-density environment of a rear exit:
+- **Matrix Bitwise Detection**: Instead of simple bbox checks, we use **Person Polygon + Door Mask** bitwise AND operations. This $O(1)$ complexity approach allows for pixel-perfect entry detection.
+- **Grace Period Mechanism**: A "Disappearance Grace Period" logic is used to handle tracking fragmentation. If a passenger disappears while overlapping with the door mask after showing "intent to alight," they are counted, providing resilience against occlusion.
+
+### 4. End-to-End OD Matching (`main.py`)
+- **Passenger Database**: Maintains a lifecycle-aware database of "On-bus" passengers.
+- **Dual-Stage Matching**: 
+    1. **Immediate Match**: Real-time matching using ReID features during alighting.
+    2. **Final Cross-Matching**: A global greedy matching optimization performed at the end of the trip to close the loop for "pending" passengers, maximizing the **Closure Rate**.
+
+---
+
+## 📂 Project Structure
+
+```text
 TransitVision/
-├── transit_vision/           # 核心源代码包
-├── configs/                  # 配置文件目录
-│   ├── system_config.yaml    # 系统主配置
-│   ├── botsort_seg.yaml      # 跟踪器配置
-│   └── device_*.yaml         # 设备配置
-├── data/                     # 数据样本和测试视频
-│   ├── close_loop_od/        # 闭环OD测试数据
-│   ├── reid_test/            # ReID测试数据
-│   ├── reid_dataset/         # ReID数据集(脚本生成)
-│   └── reid_features/        # ReID特征数据(测试生成)
-├── ckpt/                     # 存放模型权重文件
-├── output/                   # 存放运行结果
-│   └── results/              # 系统运行结果(按时间戳组织)
-├── scripts/                  # 辅助脚本
-│   └── extract_reid_data.py  # ReID数据提取脚本
-├── tests/                    # 测试目录
-│   ├── core_test/            # 核心算法测试
-│   ├── logic_test/           # 业务逻辑测试
-│   ├── threads_test/         # 多线程性能测试
-│   ├── system_test/          # 系统模块化测试
-│   ├── utils_test/           # 工具函数测试
-│   └── pose2id_scheme/       # ReID相关测试
-├── README.md
-└── requirements.txt
+├── transit_vision/           # Core Package
+│   ├── core/                 # AI Modules (YOLO11-Seg, ReID, Pose2ID)
+│   ├── logic/                # Business Logic (Boarding, Alighting, OD)
+│   ├── threads/              # Parallel Processing Pipelines
+│   ├── utils/                # Geometry & Image Helpers
+│   └── main.py               # System Entry Point
+├── configs/                  # System & Model Configurations
+├── scripts/                  # Data Extraction & Training Scripts
+├── tests/                    # Comprehensive Test Suite
+└── README.md
 ```
 
-## transit_vision 核心源代码包
-```
-transit_vision/
-├── __init__.py
-├── main.py
-│
-├── core/                     # 核心算法模块
-│   ├── __init__.py
-│   ├── detection/
-│   │   ├── __init__.py
-│   │   ├── person_seg.py     # 人员分割追踪
-│   │   ├── door_seg.py       # 门检测分割
-│   │   └── head_detector.py  # 头部检测
-│   └── reid/                 # 重识别模块
-│       ├── __init__.py
-│       ├── feature_extractor.py
-│       ├── feature_similarity.py
-│       ├── matcher.py
-│       ├── nfc.py
-│       └── pose2id_model/
-│
-├── logic/                    # 业务逻辑模块
-│   ├── __init__.py
-│   ├── alighting_counter.py  # 下客逻辑
-│   ├── boarding_counter.py   # 上客逻辑
-│   ├── door_preprocessor.py  # 门预处理
-│   ├── occupancy_analyzer.py # 满载率分析
-│   └── od_matcher.py         # OD匹配
-│
-├── threads/                  # 多线程模块
-│   ├── __init__.py
-│   ├── input_channel.py      # 输入通道
-│   ├── inference_channel.py  # 推理通道
-│   ├── logic_channel.py      # 逻辑运算通道
-│   └── alighting_pipeline.py # 下客流水线
-│
-├── utils/                    # 工具模块
-│   ├── __init__.py
-│   ├── video_reader.py
-│   ├── device.py
-│   ├── image_ops.py
-│   ├── angle_calc.py
-│   ├── driver_mask.py
-│   ├── frame_selector.py
-│   ├── bbox_saver.py
-│   ├── config_loader.py
-│   └── reid_utils.py
-│
-└── data_structures/          # 数据结构
-    ├── __init__.py
-    ├── person.py
-    ├── door.py
-    └── video_task.py
-```
+---
 
-## tests 测试目录
-```
-tests/
-├── core_test/
-│   ├── test_person_seg.py
-│   ├── test_door_seg.py
-│   └── test_reid.py
-│
-├── logic_test/
-│   ├── test_alighting.py
-│   ├── test_boarding.py
-│   └── test_occupancy.py
-│
-├── threads_test/
-│   ├── test_gpu_strategy2_shared_sequential.py
-│   ├── test_alighting_pipeline.py
-│   ├── test_full_pipeline_monitor.py
-│   ├── test_gpu_batch.py
-│   └── test_logic_performance.py
-│
-├── system_test/
-│   ├── test_input_channel.py
-│   ├── test_inference_channel.py
-│   ├── test_logic_channel.py
-│   └── test_reid_channel.py
-│
-├── utils_test/
-│   ├── test_video_reader.py
-│   └── test_device.py
-│
-└── pose2id_scheme/
-    └── (ReID相关测试和数据)
-```
+## 📊 System Outputs
 
-## 代码风格规范（严格遵守）
+The system generates a rich set of analytics for every run:
+- **Matched Passenger JSON**: Linked boarding and alighting stations for every recognized individual.
+- **Occupancy Curves**: Visual representation of bus fullness across the entire route.
+- **Station Statistics**: Detailed boarding/alighting counts per station.
+- **Visual Evidence**: Captured images of every boarding and alighting event for auditing.
 
-**左倾风格**: 代码追求简洁高效，命名精炼，避免冗余
-- 变量/函数名简短达意
-- 避免过度抽象和嵌套
-- 优先使用列表推导和函数式写法
+---
 
-**注释规范**: 仅在逻辑复杂处添加必要注释
-- 核心算法逻辑: 简要说明关键步骤
-- 工具函数: 无需注释，代码即文档
-- 阈值参数: 标注含义
+## 🛠️ Technical Stack
+- **Vision**: YOLOv11x-seg, PyTorch, OpenCV
+- **Tracking**: BoT-SORT (Segmentation-aware)
+- **ReID**: Pose2ID Transformer / ResNet-based Feature Extractors
+- **Architecture**: Multi-threaded Producer-Consumer Pipeline
 
-## 系统输出结果说明
-
-系统运行后会在 `output/results/run_YYYYMMDD_HHMMSS/` 目录下生成完整的结果:
-
-```
-output/results/run_20250101_120000/
-├── line_0/                           # 线路0的结果
-│   ├── station_00_站点名/            # 第0站结果
-│   │   ├── boarding/                 # 上车乘客
-│   │   │   ├── person_0.png         # 乘客0的中间帧图片
-│   │   │   └── person_1.png
-│   │   ├── alighting/                # 下车乘客
-│   │   │   └── person_0.png
-│   │   ├── boarding_info.json       # 上车信息(id, 图片路径)
-│   │   ├── alighting_info.json      # 下车信息(id, 图片, 匹配状态)
-│   │   └── occupancy_info.json      # 拥挤度信息
-│   ├── station_01_站点名/
-│   └── summary/                      # 最终汇总
-│       ├── matched_passengers.json   # 匹配成功的乘客(上下站信息)
-│       ├── station_statistics.json   # 各站统计
-│       ├── total_statistics.json     # 总体统计(闭环率等)
-│       └── passenger_count_curve.png # 车内人数折线图
-└── line_1/                           # 线路1的结果(如果有)
-```
-
-**下车乘客匹配状态**:
-- `immediate`: 下车时立即匹配成功
-- `pending`: 下车时未匹配(等待最终交叉匹配)
-- `final`: 最终交叉匹配成功
-- `unmatched`: 最终未匹配成功
-
-**实时查看**: 每处理完一站,该站的结果会立即保存,可实时查看。最终汇总在所有站点处理完成后生成。
-
-## 开发规则
-
-**严格禁止**:
-- 禁止创建任何代码外文件(md/txt/sh等)，除非明确要求
-- 禁止为测试目的创建临时代码文件
-- 禁止修改README.md，除非明确要求
-- 所有临时测试直接在命令行完成或测试后立即删除代码文件
-- 禁止主动进行git操作(包括提交)，除非我明确要求
-
-**允许操作**:
-- 修改现有代码文件
-- 创建明确要求的代码文件
-- 根据要求完成后更新README的文件目录
-- 在对话中使用命令行测试
+---
+*Generated with TransitVision — Precision Analytics for Modern Urban Mobility.*
